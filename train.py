@@ -1,39 +1,41 @@
-import os
-import argparse
-import torch as th
+import argparse # bib utilisé pour  faire liste des arguments 
+#
+import os  # utilisé pour lire path shemin
+import torch as th 
+import pandas as pd
 import torchmetrics.functional as thm
-from tqdm import tqdm
-from torch_scatter import scatter_mean, scatter_add
-from torch_geometric.datasets import UPFD
-from torch_geometric.loader import DataLoader
+from tqdm import tqdm # bib pour affiché le temps d'entrainement 
+from models import LSTM, GRU
+from utils import load_vocab, text_to_tokens 
 from sklearn.metrics import ConfusionMatrixDisplay
+import matplotlib.pyplot as plt # visualisation des plots 
 
-from models import GCN, GAT, SAGE
-import matplotlib.pyplot as plt
 
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
+
 def main(args):
     device = th.device('cpu')
-    trainset = UPFD(root='../data', name=args.dataset, feature=args.features, split='train')
-    testset = UPFD(root='../data', name=args.dataset, feature=args.features, split='test')
+    df = pd.read_json(os.path.join('../data', args.dataset + ".json"), orient='records', lines=True) # lire fichier json qui contient le dataset
+    vocab = load_vocab(os.path.join('../data', args.dataset + ".vocab.json")) # load vocab est une fonction qui trouve dans le fichier utils qui lire le fichier vocab.json 
+    
+    trainset = df.sample(frac=0.8) 
 
-    trainloader = DataLoader(trainset, batch_size=args.batch_size, shuffle=True)
-    testloader = DataLoader(testset, batch_size=args.batch_size, shuffle=False)
+    testset = df.drop(trainset.index)
 
-    readout = scatter_mean if args.readout == 'mean' else scatter_add
-
-    if args.model == 'gcn':
-        model = GCN(trainset.num_features, args.nhids).to(device)
-    elif args.model == 'gat':
-        model = GAT(trainset.num_features, args.nhids, args.nheads).to(device)
-    elif args.model == 'sage':
-        model = SAGE(trainset.num_features, args.nhids).to(device)
+    vocab_size = len(vocab)
+    
+    if args.model == 'lstm':
+        model = LSTM(vocab_size).to(device)
+    elif args.model == 'gru':
+        model = GRU(vocab_size).to(device)
     else:
-        raise ValueError('Unknown model: {}'.format(args.model))
+        raise ValueError("Invalid model")
 
-    optimizer = th.optim.Adam(model.parameters(), lr=args.lr)
-    loss_fn = th.nn.BCELoss()
+    optimizer = th.optim.Adam(model.parameters(), lr=args.lr) # pour optimiser l'erreur 
+    criterion = th.nn.BCELoss() # (Binary Cross-Entropy Loss ) fonction loss entre y et y predit 
+    
+    model.train()
 
     total_train_loss = []
     total_test_loss = []
@@ -41,52 +43,71 @@ def main(args):
     total_train_accuracy = []
     total_test_accuracy = []
 
+    predictions = []
+    labels = []
     conf_matrix = th.zeros(2, 2)
 
-    for epoch in tqdm(range(args.epochs), desc='Epoch'):
-        model.train()
-        batch_train_loss = []
-        batch_train_accuracy = []
-        for data in trainloader:
-            optimizer.zero_grad()
-            data = data.to(device)
-        
-            hn = model(data.edge_index, data.x)
-            hg = readout(hn, data.batch, dim=0).view(-1)
+    for _ in tqdm(range(10), desc='Epoch', leave=False):
+        train_labels = []
+        train_preds = []
 
-            loss = loss_fn(hg, data.y.float())
-            
+        for idx, row in tqdm(trainset.iterrows(), total=len(trainset), desc='Training', leave=False):
+            seq = text_to_tokens(row['text'], vocab) # fonction dans le fichier utils quit prend le text et les vocab de text
+            if seq.nelement() == 0:
+                continue
+            label = th.tensor(row['label']).unsqueeze(0).float() #list true label 
+            out = model(seq)
+            loss = criterion(out, label)
             loss.backward()
+
+            train_labels.append(label.item())
+            train_preds.append(out.item())
+
+        if idx % 10 == 0:
             optimizer.step()
-            batch_train_loss.append(loss.item())
-            batch_train_accuracy.append(thm.accuracy(hg, data.y).item())
+            optimizer.zero_grad()
 
-        total_train_loss.append(th.tensor(batch_train_loss).mean().item())
-        total_train_accuracy.append(th.tensor(batch_train_accuracy).mean().item())
-
-        model.eval()
-        batch_test_loss = []
-        batch_test_accuracy = []
-        for data in testloader:
-            data = data.to(device)
-            hn = model(data.edge_index, data.x)
-            hg = readout(hn, data.batch, dim=0).view(-1)
-            loss = loss_fn(hg, data.y.float())
-            batch_test_loss.append(loss.item()) 
-            batch_test_accuracy.append(thm.accuracy(hg, data.y).item())
-
-            conf_matrix = conf_matrix + thm.confusion_matrix(hg, data.y, num_classes=2)
-
-        total_test_loss.append(th.tensor(batch_test_loss).mean().item())
-        total_test_accuracy.append(th.tensor(batch_test_accuracy).mean().item())
+            total_train_loss.append(loss.item())
+            total_train_accuracy.append(
+                thm.accuracy(th.tensor(train_preds), th.tensor(train_labels)).item()
+            )
+            train_preds = []
+            train_labels = []
         
+
+
+    model.eval()
+
+    for idx, row in tqdm(testset.iterrows(), total=len(testset), desc='Testing'):
+        seq = text_to_tokens(row['text'], vocab)
+        if seq.nelement() == 0:
+            continue
+        label = th.tensor(row['label']).unsqueeze(0).float()
+        out = model(seq)
+        loss = criterion(out, label)
+
+        total_train_loss.append(loss.item())
+
+        predictions.append(out.item())
+        labels.append(label.item())
+
+        if idx % 10 == 0:
+            total_test_accuracy.append(
+                thm.accuracy(th.tensor(predictions), th.tensor(labels)).item()
+            )
+            
+            total_test_loss.append(loss.item())
+
+            conf_matrix = conf_matrix + thm.confusion_matrix(th.tensor(predictions), th.tensor(labels))
+
+
     plt.figure(figsize=(8, 6))
     plt.plot(list(range(args.epochs)), total_train_loss, label='training')
     plt.plot(list(range(args.epochs)), total_test_loss, label='test')
     plt.xlabel('epoch')
     plt.ylabel('loss')
     plt.legend()
-    plt.savefig(f'./figures/loss-{args.model}-{args.dataset}-{args.features}.png')
+    plt.savefig(f'./figures/loss-{args.model}-{args.dataset}.png')
 
 
     plt.figure(figsize=(8, 6))
@@ -95,28 +116,20 @@ def main(args):
     plt.xlabel('epoch')
     plt.ylabel('performance')
     plt.legend()
-    plt.savefig(f'./figures/accuracy-{args.model}-{args.dataset}-{args.features}.png')
+    plt.savefig(f'./figures/accuracy-{args.model}-{args.dataset}.png')
 
     cmd = ConfusionMatrixDisplay(conf_matrix.numpy())
 
     cmd.plot()
-    plt.savefig(f'./figures/confusion-matrix-{args.model}-{args.dataset}-{args.features}.png')
+    plt.savefig(f'./figures/confusion-matrix-{args.model}-{args.dataset}.png')
 
     
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-
-    parser.add_argument('--dataset', type=str, default='politifact', choices=['politifact', 'gossipcop'])
-    parser.add_argument('--epochs', type=int, default=100)
-    parser.add_argument('--features', type=str, default='bert', choices=['bert', 'spacy'])
-    parser.add_argument('--batch-size', type=int, default=8, help='Batch size')
+    parser.add_argument('--dataset', type=str, choices=['politifact', 'gossipcop'], default='politifact')
+    parser.add_argument('--model', type=str, choices=['lstm', 'gru'], default='lstm')
     parser.add_argument('--lr', type=float, default=0.001)
-    parser.add_argument('--nhids', type=int, default=32)
-    parser.add_argument('--nheads', type=int, default=8)
-    parser.add_argument('--readout', type=str, default='mean', choices=['mean', 'sum'])
-    parser.add_argument('--model', type=str, default='gcn', choices=['gcn', 'gat', 'sage'])
-    
+
     args = parser.parse_args()
     main(args)

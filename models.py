@@ -1,64 +1,50 @@
-import torch as th
 import torch.nn as nn
-import torch.nn.functional as F
-import torch_geometric.nn as tgnn
 
 
-class Predictor(nn.Module):
-    def __init__(self, in_features):
-        super(Predictor, self).__init__()
-        self.linear = nn.Linear(in_features, 1)
+class LSTM(nn.Module):
+    def __init__(self, vocab_size, embedding_size=128, hidden_size=256) -> None:
+        super().__init__()
+
+        self.embedding = nn.Embedding(vocab_size, embedding_dim=embedding_size, padding_idx=0)
+
+        self.lstm = nn.LSTM(input_size=embedding_size, hidden_size=hidden_size, bidirectional=True)
+
+        self.linear = nn.Linear(hidden_size, 1)
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, x):
-        x = self.linear(x)
-        return self.sigmoid(x)
+        self.mlp = nn.Sequential(
+            nn.Linear(hidden_size, 1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, seq):
+        embed = self.embedding(seq)
+
+        output, _ = self.lstm(embed)
+
+        output = self.linear(output[-1])
+        output = self.sigmoid(output)
+
+        return output
 
 
-class GCN(nn.Module):
-    def __init__(self, nfeats, nhids) -> None:
+class GRU(nn.Module):
+    def __init__(self, vocab_size, embedding_size=128, hidden_size=256) -> None:
         super().__init__()
 
-        self.conv1 = tgnn.GCNConv(nfeats, nhids)
-        self.conv2 = tgnn.GCNConv(nhids, nhids)
-        self.predictor = Predictor(nhids)
+        self.embedding = nn.Embedding(vocab_size, embedding_dim=embedding_size, padding_idx=0)
 
-    def forward(self, edge_index, x):
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index)
-        return self.predictor(x)
+        self.lstm = nn.GRU(input_size=embedding_size, hidden_size=hidden_size)
 
+        self.linear = nn.Linear(hidden_size, 1)
+        self.sigmoid = nn.Sigmoid()
 
-class GAT(nn.Module):
-    def __init__(self, nfeats, nhids, nheads=8) -> None:
-        super().__init__()
+    def forward(self, seq):
+        embed = self.embedding(seq)
 
-        self.conv1 = tgnn.GATConv(nfeats, nhids, heads=nheads, concat=True)
-        self.conv2 = tgnn.GATConv(
-            nhids * nheads, nhids, heads=nheads, concat=False)
-        self.predictor = Predictor(nhids)
+        output, _ = self.lstm(embed)
 
-    def forward(self, edge_index, x):
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index)
-        return self.predictor(x)
+        output = self.linear(output[-1])
+        output = self.sigmoid(output)
 
-
-class SAGE(nn.Module):
-    def __init__(self, nfeats, nhids) -> None:
-        super().__init__()
-
-        self.conv1 = tgnn.SAGEConv(nfeats, nhids)
-        self.conv2 = tgnn.SAGEConv(nhids, nhids)
-        self.predictor = Predictor(nhids)
-
-    def forward(self, edge_index, x):
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = F.dropout(x, training=self.training)
-        x = self.conv2(x, edge_index)
-        return self.predictor(x)
+        return output
