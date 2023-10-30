@@ -1,0 +1,112 @@
+==== gcn - politifact - bert ==== 
+Test AUROC: 87.75 %
+Test Accuracy: 85.71 %
+Test Recall: 82.41 %
+Test Precision: 89.38 %
+Test Micro F1: 82.98 %
+Test Macro F1: 82.72 %
+==== gat - politifact - bert ==== 
+Test AUROC: 91.04 %
+Test Accuracy: 84.38 %
+Test Recall: 80.98 %
+Test Precision: 89.91 %
+Test Micro F1: 82.57 %
+Test Macro F1: 81.79 %
+==== sage - politifact - bert ==== 
+Test AUROC: 90.07 %
+Test Accuracy: 85.71 %
+Test Recall: 81.99 %
+Test Precision: 89.43 %
+Test Micro F1: 83.26 %
+Test Macro F1: 82.76 %
+==== gcn - politifact - spacy ==== 
+Test AUROC: 80.55 %
+Test Accuracy: 75.62 %
+Test Recall: 66.96 %
+Test Precision: 80.39 %
+Test Micro F1: 70.62 %
+Test Macro F1: 71.79 %
+==== gat - politifact - spacy ==== 
+Test AUROC: 83.13 %
+Test Accuracy: 76.52 %
+Test Recall: 71.81 %
+Test Precision: 80.80 %
+Test Micro F1: 73.12 %
+Test Macro F1: 73.21 %
+==== sage - politifact - spacy ==== 
+Test AUROC: 82.73 %
+Test Accuracy: 77.59 %
+Test Recall: 68.32 %
+Test Precision: 84.43 %
+Test Micro F1: 72.94 %
+Test Macro F1: 73.97 %
+==== Random Forest - bert - politifact (features only) ==== 
+Test AUROC: 73.65 %
+Test Accuracy: 73.30 %
+Test Recall: 58.41 %
+Test Precision: 84.62 %
+Test Micro F1: 73.30 %
+Test Macro F1: 72.80 %
+==== Random Forest - spacy - politifact (features only) ==== 
+Test AUROC: 73.29 %
+Test Accuracy: 72.85 %
+Test Recall: 53.98 %
+Test Precision: 88.41 %
+Test Micro F1: 72.85 %
+Test Macro F1: 71.98 %
+==== gcn - gossipcop - bert ==== 
+Test AUROC: 88.41 %
+Test Accuracy: 79.70 %
+Test Recall: 75.14 %
+Test Precision: 82.40 %
+Test Micro F1: 76.06 %
+Test Macro F1: 77.02 %
+==== gat - gossipcop - bert ==== 
+Test AUROC: 90.86 %
+Test Accuracy: 82.10 %
+Test Recall: 71.84 %
+Test Precision: 89.69 %
+Test Micro F1: 77.39 %
+Test Macro F1: 79.37 %
+==== sage - gossipcop - bert ==== 
+Test AUROC: 93.83 %
+Test Accuracy: 84.42 %
+Test Recall: 73.07 %
+Test Precision: 92.84 %
+Test Micro F1: 79.54 %
+Test Macro F1: 82.02 %
+==== gcn - gossipcop - spacy ==== 
+Test AUROC: 89.22 %
+Test Accuracy: 80.48 %
+Test Recall: 79.76 %
+Test Precision: 80.40 %
+Test Micro F1: 77.80 %
+Test Macro F1: 77.95 %
+==== gat - gossipcop - spacy ==== 
+Test AUROC: 93.29 %
+Test Accuracy: 87.08 %
+Test Recall: 79.12 %
+Test Precision: 91.73 %
+Test Micro F1: 83.10 %
+Test Macro F1: 84.79 %
+==== sage - gossipcop - spacy ==== 
+Test AUROC: 94.80 %
+Test Accuracy: 88.91 %
+Test Recall: 84.12 %
+Test Precision: 92.02 %
+Test Micro F1: 86.34 %
+Test Macro F1: 87.06 %
+==== Random Forest - bert - gossipcop (features only) ==== 
+Test AUROC: 90.32 %
+Test Accuracy: 90.33 %
+Test Recall: 93.22 %
+Test Precision: 88.15 %
+Test Micro F1: 90.33 %
+Test Macro F1: 90.32 %
+==== Random Forest - spacy - gossipcop (features only) ==== 
+Test AUROC: 90.46 %
+Test Accuracy: 90.46 %
+Test Recall: 91.65 %
+Test Precision: 89.55 %
+Test Micro F1: 90.46 %
+Test Macro F1: 90.46 %
